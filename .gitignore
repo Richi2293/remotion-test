@@ -1,40 +1,7 @@
-# Dependencies
 node_modules
-
-# Build / output
 dist
-build
-*.tsbuildinfo
-
-# Remotion: ignore rendered videos (keep source assets in src/)
-out
-
-# Environment (secrets, API keys)
-.env
-.env.local
-.env.*.local
-
-# Logs and caches
-*.log
-npm-debug.log*
-.npm
-.cache
-.turbo
-
-# OS
 .DS_Store
-Thumbs.db
+.env
 
-# IDE (uncomment if you prefer not to commit)
-# .idea
-# .vscode
-# *.swp
-# *.swo
-
-# Test / coverage
-coverage
-.nyc_output
-
-# Optional: uncomment if you use Vercel/Remotion Lambda
-# .vercel
-# remotion-renders
+# Ignore the output video from Git but not videos you import into src/.
+out
