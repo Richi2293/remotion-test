@@ -1,101 +1,19 @@
-# Remotion Prompt to Motion Graphics
+# Remotion AI Video template
 
 <p align="center">
-  <a href="https://github.com/remotion-dev/logo">
-    <picture>
-      <source media="(prefers-color-scheme: dark)" srcset="https://github.com/remotion-dev/logo/raw/main/animated-logo-banner-dark.apng">
-      <img alt="Animated Remotion Logo" src="https://github.com/remotion-dev/logo/raw/main/animated-logo-banner-light.gif">
+  <picture>
+      <source media="(prefers-color-scheme: dark)" srcset="https://cdn.webmonch.dev/img/remotion-template-promo.png">
+      <img alt="Animated Remotion Logo" src="https://cdn.webmonch.dev/img/remotion-template-promo.png">
     </picture>
-  </a>
 </p>
 
-AI-powered motion graphics generator that transforms natural language prompts into Remotion code.
+Using this template you can create high quality **AI videos for TikTok or Instagram**.
 
-## Architecture
+It includes a CLI that will generate a story script, images and voiceover using OpenAI and ElevenLabs.
 
-```
-User Prompt → Validation → Skill Detection → Code Generation → Sanitization → Live Preview
-```
+## Getting started
 
-## How It Works
-
-### 1. Validation
-
-Before expensive model calls, a lightweight classifier determines if the prompt describes valid motion graphics content.
-
-**Accepted**: animated text, data visualizations, UI animations, social media content, abstract motion graphics
-
-**Rejected**: questions, conversational requests, non-visual tasks
-
-### 2. Skill Detection
-
-The system analyzes the prompt to identify which **skills** are relevant. Skills are modular knowledge units that provide domain-specific guidance to the code generation model.
-
-There are two types of skills:
-
-- **Guidance Skills** - Pattern libraries with best practices for specific domains (charts, typography, transitions, etc.)
-- **Example Skills** - Complete working code references that demonstrate specific animation patterns
-
-This approach keeps the base prompt lightweight while dynamically injecting only the relevant expertise for each request.
-
-### 3. Code Generation
-
-Uses a one-shot prompt with the base Remotion knowledge plus any detected skills. The generated code follows these principles:
-
-- **Constants-first design** - All text, colors, and timing values are declared as editable constants at the top
-- **Aesthetic defaults** - Guidance on visual polish, spacing, and animation feel
-- **Crossfade patterns** - Smooth state transitions without layout jumps
-- **Spring physics** - Natural, organic motion using Remotion's spring() function
-
-### 4. Sanitization & Compilation
-
-The response is cleaned (removing markdown wrappers and trailing commentary), then compiled in-browser using Babel. The compiled component renders directly in the Remotion Preview with all necessary APIs injected.
-
-## Skills System
-
-Skills enable contextual expertise without bloating every prompt. Located in `src/skills/`:
-
-### Guidance Skills
-
-| Skill              | Purpose                                                                                 |
-| ------------------ | --------------------------------------------------------------------------------------- |
-| **charts**         | Data visualization patterns - bar charts, pie charts, axis labels, staggered animations |
-| **typography**     | Kinetic text - typewriter effects, word carousels, text highlights                      |
-| **messaging**      | Chat UI - bubble layouts, WhatsApp/iMessage styling, staggered entrances                |
-| **transitions**    | Scene changes - TransitionSeries, fade/slide/wipe effects                               |
-| **sequencing**     | Timing control - Sequence, Series, staggered delays                                     |
-| **spring-physics** | Organic motion - spring configs, bounce effects, chained animations                     |
-| **social-media**   | Platform-specific formats - aspect ratios, safe zones                                   |
-| **3d**             | Three.js integration - 3D scenes, camera setup                                          |
-
-### Example Skills (Code Snippets)
-
-Example skills provide complete working references (histogram, chat messages, typewriter effects, etc.) that demonstrate these patterns in action. We think of them like implementation archetypes that can be used and adjusted for the user prompt.
-
-## Usage Tips
-
-**Prompting best practices:**
-
-- Be specific about colors, timing, and layout ("green sent bubbles on the right, gray received on the left")
-- Include data directly in the prompt for charts and visualizations
-- Describe the animation feel you want ("bouncy spring entrance", "smooth fade", "staggered timing")
-
-**Images:**
-
-- Direct image uploads are not supported
-- Reference images via URL - the generated code will use Remotion's `<Img>` component
-- Example: _"Create a DVD screensaver animation of this image https://example.com/logo.png"_
-
-**What works well:**
-
-- Kinetic typography and text animations
-- Data visualizations with animated entrances
-- Chat/messaging UI mockups
-- Social media content (Stories, Reels, TikTok)
-- Logo animations and brand intros
-- Abstract motion graphics
-
-## Commands
+Set up the demo story:
 
 **Install Dependencies**
 
@@ -115,24 +33,88 @@ npm run dev
 npx remotion render
 ```
 
-**Upgrade Remotion**
+Or check out the [Remotion docs](/docs/render/). There are lots of ways to render.
 
-```console
-npx remotion upgrade
+## Creating a new story
+
+You can easily create your own videos using provided CLI.
+
+It will generate a script, images, voiceover and timeline based on your story title and topic. Topics that work well: history, ELI5, fun facts, science.
+
+**Configure environment variables**
+
+Create .env file with following env vars (you can also find them in .env.example):
+
+```
+OPENAI_API_KEY=
+ELEVENLABS_API_KEY=
 ```
 
-## Docs
+If you don't create an env file, you will be prompted for these variables when using CLI.
 
-Get started with Remotion by reading the [fundamentals page](https://www.remotion.dev/docs/the-fundamentals).
+**Select voice**
 
-## Help
+In [`generateVoice()`](cli/service.ts) replace the voice id from ElevenLabs with the one you like. You can use their API for this. Alternatively, you can open any voice on their website and extract the Voice ID from the url (id comes after `voiceId=`).
 
-We provide help on our [Discord server](https://discord.gg/6VzzNDwUwV).
+```console
+https://elevenlabs.io/app/voice-library?voiceId=aTxZrSrp47xsP6Ot4Kgd
+```
+
+**Generate story timeline**
+
+```console
+npm run gen
+```
+
+You will be prompted to enter story title and topic.
+
+Title can be a vague one or long and detailed. Short title on the first slide will be generated based on it.
+
+Topic can be e.g. History, Interesting facts, ELI5 etc.
+
+After you enter title and topic, CLI will generate text, images and audio with timestamps, and combine all those into a timeline that van be used by this template to render a video.
+
+## Technical overview
+
+Remotion is rendering videos based on Timeline (timeline.json in project folder). The timeline is generated by CLI.
+
+It consists of three blocks - Elements, Text and Audio.
+
+Elements define slide backgrounds and include enter/exit transitions (e.g. blur) and animations that are applied while slide is active (e.g. scale, rotate).
+
+Text and audio are self explanatory. The only special thing about them is that they are synced.
+
+You can customize the generation of the timeline in [`createTimeLineFromStoryWithDetails()`](cli/timeline.ts) function.
+
+## Deploying on a remote server
+
+Current project needs light modification if you want to deploy it as a remote service.
+
+Remotion renderer with template bundle should be deployed as per usual.
+
+Then you have to update [`Root.tsx`](src/Root.tsx) to use timeline url that you will pass as a prop (instead of project name).
+
+The last thing - you have to upload generated resources (images and audio) to server and use urls to them instead of file names when generating a timeline.
 
 ## Issues
 
-Found an issue with Remotion? [File an issue here](https://github.com/remotion-dev/remotion/issues/new).
+Found an issue with Remotion? Upgrade Remotion to receive fixes:
+
+```
+npx remotion upgrade
+```
+
+Didn't help? [File an issue here](https://github.com/remotion-dev/remotion/issues/new).
+
+## Contributing
+
+The source of this template is in the [Remotion Monorepo](https://github.com/remotion-dev/remotion/tree/main/packages/template-ai-video).  
+Don't send pull requests here, this is only a mirror.
 
 ## License
 
 Note that for some entities a company license is needed. [Read the terms here](https://github.com/remotion-dev/remotion/blob/main/LICENSE.md).
+
+## Credits
+
+Thanks to [@webmonch](https://github.com/webmonch) for contributing this template!
