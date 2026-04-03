@@ -28,7 +28,6 @@ const MUTED = "#8b949e";
 // --- Timing (frames) ---
 const PROMPT_IN = 18; // prompt appears
 const TYPING_START = 50; // start typing "RicDev"
-const CHAR_FRAMES = 8; // frames per typed character
 const BODY_START = 120; // 2s
 const NPM_START = 145; // npm line typing starts
 const NPM_CHAR_FRAMES = 3;
@@ -37,7 +36,10 @@ const COMPILED_START = 390; // "✓ compiled in 1.2s" (~6.5s)
 const READY_START = 480; // ready status fades in (~8s)
 const WATCHING_START = 570; // "watching for file changes..." (~9.5s)
 const EXIT_START = 780; // 13s
+const GLITCH_START = EXIT_START - 12;
+const GLITCH_FRAMES = 6;
 const CURSOR_BLINK_PERIOD = 20;
+const PROGRESS_WIDTH = 20;
 
 // --- Text ---
 const HERO_TEXT = "RicDev";
@@ -46,6 +48,18 @@ const COMPILE_TEXT = "compiling";
 const COMPILED_TEXT = "✓ compiled in 1.2s";
 const READY_TEXT = "ready - started on http://localhost:3000";
 const WATCHING_TEXT = "watching for file changes...";
+
+// Pre-computed cumulative frame offsets for non-uniform typing
+const HERO_CHAR_OFFSETS = (() => {
+  const offsets: number[] = [];
+  let total = 0;
+  for (let i = 0; i < HERO_TEXT.length; i++) {
+    const delay = 8 + Math.round(Math.sin(i * 7.3) * 3);
+    total += delay;
+    offsets.push(total);
+  }
+  return offsets;
+})();
 
 // --- Cursor ---
 const Cursor: React.FC<{ frame: number; opacity?: number }> = ({
@@ -111,6 +125,87 @@ const MovingScanline: React.FC<{ frame: number }> = ({ frame }) => {
   );
 };
 
+// --- Vignette overlay ---
+const Vignette: React.FC = () => (
+  <div
+    style={{
+      position: "absolute",
+      inset: 0,
+      background:
+        "radial-gradient(ellipse at center, transparent 50%, rgba(0, 0, 0, 0.6) 100%)",
+      pointerEvents: "none",
+      zIndex: 12,
+    }}
+  />
+);
+
+// --- Noise overlay ---
+const NoiseOverlay: React.FC<{ frame: number }> = ({ frame }) => (
+  <svg
+    style={{
+      position: "absolute",
+      inset: 0,
+      width: "100%",
+      height: "100%",
+      pointerEvents: "none",
+      zIndex: 13,
+      opacity: 0.035,
+      mixBlendMode: "screen" as const,
+    }}
+  >
+    <filter id={`noise-${frame}`}>
+      <feTurbulence
+        type="fractalNoise"
+        baseFrequency="0.75"
+        numOctaves={4}
+        seed={Math.floor(frame / 3)}
+      />
+    </filter>
+    <rect width="100%" height="100%" filter={`url(#noise-${frame})`} />
+  </svg>
+);
+
+// --- Glitch effect ---
+const GlitchEffect: React.FC<{ frame: number }> = ({ frame }) => (
+  <>
+    <div
+      style={{
+        position: "absolute",
+        inset: 0,
+        backgroundColor: `rgba(230, 237, 243, ${0.03 + Math.abs(Math.sin(frame * 17)) * 0.06})`,
+        pointerEvents: "none",
+        zIndex: 20,
+      }}
+    />
+    <div
+      style={{
+        position: "absolute",
+        top: `${20 + ((frame * 137) % 60)}%`,
+        left: 0,
+        width: "100%",
+        height: 3,
+        backgroundColor: "rgba(88, 166, 255, 0.18)",
+        transform: `translateX(${Math.round(Math.sin(frame * 11) * 15)}px)`,
+        pointerEvents: "none",
+        zIndex: 21,
+      }}
+    />
+    <div
+      style={{
+        position: "absolute",
+        top: `${55 + ((frame * 89) % 35)}%`,
+        left: 0,
+        width: "100%",
+        height: 2,
+        backgroundColor: "rgba(63, 185, 80, 0.14)",
+        transform: `translateX(${Math.round(Math.cos(frame * 9) * 12)}px)`,
+        pointerEvents: "none",
+        zIndex: 21,
+      }}
+    />
+  </>
+);
+
 // --- Main Component ---
 export const MinimalTerminalIntro: React.FC = () => {
   const frame = useCurrentFrame();
@@ -124,9 +219,9 @@ export const MinimalTerminalIntro: React.FC = () => {
     extrapolateRight: "clamp",
   });
 
-  // Typing "RicDev" — character by character
-  const typingProgress = Math.floor((frame - TYPING_START) / CHAR_FRAMES);
-  const heroChars = Math.max(0, Math.min(HERO_TEXT.length, typingProgress));
+  // Typing "RicDev" — character by character (non-uniform speed)
+  const elapsed = frame - TYPING_START;
+  const heroChars = elapsed < 0 ? 0 : HERO_CHAR_OFFSETS.filter((t) => elapsed >= t).length;
   const heroTyped = HERO_TEXT.slice(0, heroChars);
   // Show standalone prompt before typing starts
   const showStandalonePrompt = frame >= PROMPT_IN && frame < TYPING_START;
@@ -159,6 +254,19 @@ export const MinimalTerminalIntro: React.FC = () => {
     ? Math.floor(((frame - COMPILE_START) % 40) / 10) + 1
     : 0;
   const compileDots = ".".repeat(dotCount);
+
+  // Progress bar during compile
+  const compileProgress = interpolate(
+    frame,
+    [COMPILE_START + 15, COMPILED_START - 5],
+    [0, 1],
+    { extrapolateLeft: "clamp", extrapolateRight: "clamp" },
+  );
+  const filledCount = Math.round(compileProgress * PROGRESS_WIDTH);
+  const progressBar =
+    "\u2588".repeat(filledCount) + "\u2591".repeat(PROGRESS_WIDTH - filledCount);
+  const progressPercent = Math.round(compileProgress * 100);
+  const showProgress = frame >= COMPILE_START + 15 && frame < COMPILED_START;
 
   // "✓ compiled in 1.2s"
   const showCompiled = frame >= COMPILED_START;
@@ -238,6 +346,13 @@ export const MinimalTerminalIntro: React.FC = () => {
   // Global opacity for content (not cursor in final phase)
   const globalOpacity = frame < EXIT_START ? 1 : contentFade;
 
+  // Glitch before exit
+  const isGlitching =
+    frame >= GLITCH_START && frame < GLITCH_START + GLITCH_FRAMES;
+  const glitchOffset = isGlitching
+    ? Math.round(Math.sin(frame * 13.7) * 12)
+    : 0;
+
   // Scanlines visible during body and early exit
   const showScanlines = frame >= BODY_START && frame < EXIT_START + 60;
 
@@ -254,6 +369,15 @@ export const MinimalTerminalIntro: React.FC = () => {
       {/* Moving scanline */}
       {showScanlines && <MovingScanline frame={frame} />}
 
+      {/* Vignette — always visible */}
+      <Vignette />
+
+      {/* Noise grain overlay */}
+      <NoiseOverlay frame={frame} />
+
+      {/* Glitch flash before exit */}
+      {isGlitching && <GlitchEffect frame={frame} />}
+
       {/* Main content */}
       <AbsoluteFill
         style={{
@@ -268,6 +392,7 @@ export const MinimalTerminalIntro: React.FC = () => {
             flexDirection: "column",
             alignItems: "center",
             gap: 0,
+            transform: glitchOffset ? `translateX(${glitchOffset}px)` : "none",
           }}
         >
           {/* Hero line: >_ / > RicDev */}
@@ -351,6 +476,22 @@ export const MinimalTerminalIntro: React.FC = () => {
                 }}
               >
                 {COMPILE_TEXT}{compileDots}
+              </div>
+            )}
+
+            {/* Progress bar during compile */}
+            {showProgress && (
+              <div
+                style={{
+                  fontSize: 18,
+                  fontWeight: 400,
+                  color: MUTED,
+                  letterSpacing: 2,
+                  marginTop: 4,
+                  opacity: compileOpacity,
+                }}
+              >
+                [{progressBar}] {progressPercent}%
               </div>
             )}
 
