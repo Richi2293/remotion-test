@@ -14,7 +14,7 @@ const { fontFamily } = loadFont("normal", {
 
 // --- Config ---
 const MINIMAL_TERMINAL_FPS = 60;
-const MINIMAL_TERMINAL_DURATION = 420; // 7s
+const MINIMAL_TERMINAL_DURATION = 600; // 10s
 
 export { MINIMAL_TERMINAL_FPS, MINIMAL_TERMINAL_DURATION };
 
@@ -33,7 +33,7 @@ const BODY_START = 120; // 2s
 const NPM_START = 145; // npm line typing starts
 const NPM_CHAR_FRAMES = 3;
 const READY_START = 210; // ready status fades in
-const EXIT_START = 300; // 5s
+const EXIT_START = 480; // 8s
 const CURSOR_BLINK_PERIOD = 20;
 
 // --- Text ---
