@@ -14,7 +14,7 @@ const { fontFamily } = loadFont("normal", {
 
 // --- Config ---
 const MINIMAL_TERMINAL_FPS = 60;
-const MINIMAL_TERMINAL_DURATION = 600; // 10s
+const MINIMAL_TERMINAL_DURATION = 900; // 15s
 
 export { MINIMAL_TERMINAL_FPS, MINIMAL_TERMINAL_DURATION };
 
@@ -32,14 +32,20 @@ const CHAR_FRAMES = 8; // frames per typed character
 const BODY_START = 120; // 2s
 const NPM_START = 145; // npm line typing starts
 const NPM_CHAR_FRAMES = 3;
-const READY_START = 210; // ready status fades in
-const EXIT_START = 480; // 8s
+const COMPILE_START = 240; // "compiling..." appears (~4s)
+const COMPILED_START = 390; // "✓ compiled in 1.2s" (~6.5s)
+const READY_START = 480; // ready status fades in (~8s)
+const WATCHING_START = 570; // "watching for file changes..." (~9.5s)
+const EXIT_START = 780; // 13s
 const CURSOR_BLINK_PERIOD = 20;
 
 // --- Text ---
 const HERO_TEXT = "RicDev";
 const NPM_TEXT = "$ npm run dev";
+const COMPILE_TEXT = "compiling";
+const COMPILED_TEXT = "✓ compiled in 1.2s";
 const READY_TEXT = "ready - started on http://localhost:3000";
+const WATCHING_TEXT = "watching for file changes...";
 
 // --- Cursor ---
 const Cursor: React.FC<{ frame: number; opacity?: number }> = ({
@@ -141,14 +147,55 @@ export const MinimalTerminalIntro: React.FC = () => {
   const npmTyped = NPM_TEXT.slice(0, npmChars);
   const showNpm = frame >= NPM_START;
 
+  // "compiling..." with animated dots
+  const showCompile = frame >= COMPILE_START && frame < COMPILED_START;
+  const compileOpacity = interpolate(
+    frame,
+    [COMPILE_START, COMPILE_START + 15],
+    [0, 1],
+    { extrapolateLeft: "clamp", extrapolateRight: "clamp" },
+  );
+  const dotCount = showCompile
+    ? Math.floor(((frame - COMPILE_START) % 40) / 10) + 1
+    : 0;
+  const compileDots = ".".repeat(dotCount);
+
+  // "✓ compiled in 1.2s"
+  const showCompiled = frame >= COMPILED_START;
+  const compiledOpacity = interpolate(
+    frame,
+    [COMPILED_START, COMPILED_START + 12],
+    [0, 1],
+    { extrapolateLeft: "clamp", extrapolateRight: "clamp" },
+  );
+
   // "ready" status fade-in
   const readyOpacity = interpolate(
     frame,
-    [READY_START, READY_START + 30],
+    [READY_START, READY_START + 20],
     [0, 1],
     { extrapolateLeft: "clamp", extrapolateRight: "clamp" },
   );
   const showReady = frame >= READY_START;
+
+  // "watching for file changes..."
+  const showWatching = frame >= WATCHING_START;
+  const watchingOpacity = interpolate(
+    frame,
+    [WATCHING_START, WATCHING_START + 20],
+    [0, 1],
+    { extrapolateLeft: "clamp", extrapolateRight: "clamp" },
+  );
+
+  // Subtle glow pulse on "RicDev" during body phase
+  const heroGlow =
+    frame >= BODY_START && frame < EXIT_START
+      ? interpolate(
+          frame % 90,
+          [0, 45, 90],
+          [0, 0.6, 0],
+        )
+      : 0;
 
   // ========== EXIT (5-7s) ==========
 
@@ -247,7 +294,16 @@ export const MinimalTerminalIntro: React.FC = () => {
             {frame >= TYPING_START && (
               <>
                 <span style={{ color: GREEN }}>{">"}</span>
-                <span style={{ marginLeft: 16 }}>{heroTyped}</span>
+                <span
+                  style={{
+                    marginLeft: 16,
+                    textShadow: heroGlow > 0
+                      ? `0 0 ${12 + heroGlow * 18}px rgba(88, 166, 255, ${heroGlow * 0.5}), 0 0 ${4 + heroGlow * 8}px rgba(63, 185, 80, ${heroGlow * 0.3})`
+                      : "none",
+                  }}
+                >
+                  {heroTyped}
+                </span>
               </>
             )}
 
@@ -282,6 +338,38 @@ export const MinimalTerminalIntro: React.FC = () => {
               </div>
             )}
 
+            {/* compiling... (animated dots, disappears when compiled) */}
+            {showCompile && (
+              <div
+                style={{
+                  fontSize: 22,
+                  fontWeight: 400,
+                  color: BLUE,
+                  letterSpacing: 1,
+                  opacity: compileOpacity,
+                  marginTop: 6,
+                }}
+              >
+                {COMPILE_TEXT}{compileDots}
+              </div>
+            )}
+
+            {/* ✓ compiled in 1.2s */}
+            {showCompiled && (
+              <div
+                style={{
+                  fontSize: 22,
+                  fontWeight: 400,
+                  color: GREEN,
+                  letterSpacing: 1,
+                  opacity: compiledOpacity,
+                  marginTop: 6,
+                }}
+              >
+                {COMPILED_TEXT}
+              </div>
+            )}
+
             {/* ready status */}
             {showReady && (
               <div
@@ -294,6 +382,22 @@ export const MinimalTerminalIntro: React.FC = () => {
                 }}
               >
                 {">"} {READY_TEXT}
+              </div>
+            )}
+
+            {/* watching for file changes... */}
+            {showWatching && (
+              <div
+                style={{
+                  fontSize: 20,
+                  fontWeight: 400,
+                  color: MUTED,
+                  letterSpacing: 1,
+                  opacity: watchingOpacity,
+                  marginTop: 4,
+                }}
+              >
+                {WATCHING_TEXT}
               </div>
             )}
           </div>
